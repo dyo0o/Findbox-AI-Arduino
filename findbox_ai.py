@@ -374,7 +374,7 @@ class _Saver:
         return path
 
     def record(self, number: int, item: FoundItem):
-        """인식 결과를 인식결과.csv에 한 줄씩 쌓는다. (매칭 평가의 습득물.csv로 그대로 쓸 수 있다)"""
+        """인식 결과를 인식결과.csv에 한 줄씩 쌓는다."""
         self.dir.mkdir(parents=True, exist_ok=True)
         path = self.dir / "인식결과.csv"
         is_new = not path.exists()
@@ -501,7 +501,7 @@ def _camera_loop(index: int, saver: _Saver):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="FindBox 습득물 인식 (카메라 실시간 시연)")
+    parser = argparse.ArgumentParser(description="FindBox 습득물 인식 (시연 전 카메라·인식 테스트)")
     parser.add_argument("--camera", type=int, default=0, help="웹캠 번호 (기본 0번)")
     parser.add_argument("--out", default="results", help="결과 사진을 저장할 폴더 (기본 results, 실행할 때마다 안에 새 폴더)")
     args = parser.parse_args()
