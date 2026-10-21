@@ -75,6 +75,10 @@ log = logging.getLogger("findbox_ai")
 class RecognitionError(Exception):
     """인식 실패. 메시지는 화면이나 로그에 그대로 보여 줘도 되는 문장이다."""
 
+    def __init__(self, message: str, retry: bool = True):
+        super().__init__(message)
+        self.retry = retry  # False면 다시 해도 같은 오류 (API 키·모델 이름). 고친 뒤 프로그램을 다시 켜야 한다
+
 
 @dataclass
 class FoundItem:
@@ -137,7 +141,7 @@ def _get_client() -> genai.Client:
     if _client is None:
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
-            raise RecognitionError("GEMINI_API_KEY 환경변수가 없습니다. API 키를 먼저 설정하세요.")
+            raise RecognitionError("GEMINI_API_KEY 환경변수가 없습니다. API 키를 먼저 설정하세요.", retry=False)
         _client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=TIMEOUT_MS))
     return _client
 
@@ -234,7 +238,7 @@ def _request(contents: list) -> _Answer:
             return _Answer.model_validate_json(response.text or "")
         except errors.ClientError as e:
             if e.code != 429:  # 키·모델 이름·요청 형식 오류는 다시 해도 같다
-                raise RecognitionError(f"요청 오류 ({e.code}): {e.message}") from e
+                raise RecognitionError(f"요청 오류 ({e.code}): {e.message}", retry=False) from e
             error = "사용량 한도를 넘었습니다 (429)."
         except errors.ServerError as e:
             error = f"Gemini 서버 오류 ({e.code}): {e.message}"
@@ -374,7 +378,7 @@ class _Saver:
         return path
 
     def record(self, number: int, item: FoundItem):
-        """인식 결과를 인식결과.csv에 한 줄씩 쌓는다. (매칭 평가의 습득물.csv로 그대로 쓸 수 있다)"""
+        """인식 결과를 인식결과.csv에 한 줄씩 쌓는다."""
         self.dir.mkdir(parents=True, exist_ok=True)
         path = self.dir / "인식결과.csv"
         is_new = not path.exists()
@@ -467,7 +471,9 @@ def _camera_loop(index: int, saver: _Saver):
                     _show(items, elapsed, after, saver, hidden)
                 else:
                     items, status = [], "Failed - see terminal"
-                    print(f"인식 실패: {result.get('error', '알 수 없는 오류')} → 다시 Space를 누르세요")
+                    error = result.get("error", "알 수 없는 오류")
+                    hint = "다시 Space를 누르세요" if getattr(error, "retry", True) else "고친 뒤 프로그램을 다시 켜세요"
+                    print(f"인식 실패: {error} → {hint}")
                 job, shown_at = None, time.perf_counter()
 
             if job is None and time.perf_counter() - shown_at > RESULT_SECONDS:  # 결과는 잠깐만 보여 준다
@@ -501,7 +507,7 @@ def _camera_loop(index: int, saver: _Saver):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="FindBox 습득물 인식 (카메라 실시간 시연)")
+    parser = argparse.ArgumentParser(description="FindBox 습득물 인식 (시연 전 카메라·인식 테스트)")
     parser.add_argument("--camera", type=int, default=0, help="웹캠 번호 (기본 0번)")
     parser.add_argument("--out", default="results", help="결과 사진을 저장할 폴더 (기본 results, 실행할 때마다 안에 새 폴더)")
     args = parser.parse_args()
