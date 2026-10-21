@@ -7,13 +7,12 @@
 //   부저 등록이 끝나면(OK) "삐삐"
 //
 // 시리얼 (9600bps, 한 줄씩)
-//   아두이노 → 서버: DROP (문 닫힘), RESET (보관함 비움 버튼)
+//   아두이노 → 서버: DROP (문 닫힘)
 //   서버 → 아두이노: OK (등록 완료), FAIL (새 물건 없음·인식 실패)
 
 // 배선: 스크루 실드에서 같은 번호 단자에 연결한다
 const int PIN_IR = 2;            // IR 센서 OUT (VCC → 5V, GND → GND)
 const int PIN_BUZZER = 3;        // 능동 부저 I/O (VCC → 5V, GND → GND)
-const int PIN_RESET_BUTTON = 4;  // (선택) 보관함 비움 버튼: D4와 GND 사이에 푸시 버튼. 안 달아도 된다
 const int PIN_LED_R = 9;         // RGB LED R
 const int PIN_LED_G = 10;        // RGB LED G
 const int PIN_LED_B = 11;        // RGB LED B (− 다리 → GND)
@@ -31,7 +30,7 @@ const unsigned long ERROR_SHOW_MS = 3000;         // 빨간 불을 켜 두는 �
 
 const int BUZZER_OFF_LEVEL = (BUZZER_ON_LEVEL == LOW) ? HIGH : LOW;
 
-// 신호가 DEBOUNCE_MS 동안 그대로일 때만 바뀐 것으로 본다 (문 떨림, 버튼 접점 떨림 무시)
+// 신호가 DEBOUNCE_MS 동안 그대로일 때만 바뀐 것으로 본다 (문 떨림 무시)
 struct Debounced {
   bool stable = false;  // 확정된 상태
   bool last = false;    // 마지막으로 읽은 값
@@ -54,7 +53,6 @@ struct Debounced {
 enum State { IDLE, SETTLING, WAITING, SHOW_ERROR };
 
 Debounced door;     // stable: 문이 닫혀 있는지
-Debounced button;   // stable: 버튼이 눌려 있는지
 State state = IDLE;
 unsigned long stateStart = 0;
 bool pendingDrop = false;  // 서버 결과를 기다리는 동안 문이 또 닫혔는지 (끝나면 이어서 처리)
@@ -121,7 +119,6 @@ void setup() {
   digitalWrite(PIN_BUZZER, BUZZER_OFF_LEVEL);  // 출력으로 바꾸기 전에 꺼 둔다 (켤 때 '삑' 소리 방지)
   pinMode(PIN_BUZZER, OUTPUT);
   pinMode(PIN_IR, INPUT);
-  pinMode(PIN_RESET_BUTTON, INPUT_PULLUP);
   pinMode(PIN_LED_R, OUTPUT);
   pinMode(PIN_LED_G, OUTPUT);
   pinMode(PIN_LED_B, OUTPUT);
@@ -143,7 +140,6 @@ void setup() {
 
 void loop() {
   bool doorJustClosed = door.update(digitalRead(PIN_IR) == DOOR_CLOSED_LEVEL) && door.stable;
-  bool buttonJustPressed = button.update(digitalRead(PIN_RESET_BUTTON) == LOW) && button.stable;
   bool gotLine = readLine();
   unsigned long elapsed = millis() - stateStart;
 
@@ -151,9 +147,6 @@ void loop() {
     case IDLE:
       if (doorJustClosed) {
         enter(SETTLING);
-      } else if (buttonJustPressed) {
-        Serial.println("RESET");  // 서버가 기준 사진을 다시 찍는다 (보관함을 비운 뒤 누른다)
-        beep(1);
       }
       break;
 
