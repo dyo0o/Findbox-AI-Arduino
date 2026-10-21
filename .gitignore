@@ -1,0 +1,7 @@
+# 테스트 결과 사진과 인식결과.csv
+results/
+
+# API 키 등을 담은 파일
+.env
+
+__pycache__/
