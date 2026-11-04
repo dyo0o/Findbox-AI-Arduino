@@ -9,6 +9,7 @@
 // 시리얼 (9600bps, 한 줄씩)
 //   아두이노 → 서버: DROP (문 닫힘)
 //   서버 → 아두이노: OK (등록 완료), FAIL (새 물건 없음·인식 실패)
+//   시리얼 모니터 → 아두이노: TEST (대기 중일 때 LED 빨강·초록·파랑과 부저를 하나씩 1초씩 켠다)
 
 // 배선: 스크루 실드에서 같은 번호 단자에 연결한다
 const int PIN_IR = 2;            // IR 센서 OUT (VCC → 5V, GND → GND)
@@ -17,7 +18,7 @@ const int PIN_LED_R = 9;         // RGB LED R
 const int PIN_LED_G = 10;        // RGB LED G
 const int PIN_LED_B = 11;        // RGB LED B (− 다리 → GND)
 
-// 부품에 따라 다를 수 있는 값
+// 부품에 따라 다를 수 있는 값 (부저·LED는 SunFounder 능동 부저 모듈 TS0211, RGB LED 모듈 SZH-EK058에 맞춤)
 const int DOOR_CLOSED_LEVEL = LOW;    // 문이 닫혀 IR 센서 앞을 가릴 때의 OUT 값. 거꾸로 동작하면 HIGH로
 const int BUZZER_ON_LEVEL = LOW;      // 부저가 울리는 I/O 값. 켜자마자 계속 울리면 HIGH로
 const bool LED_COMMON_ANODE = false;  // RGB LED의 공통 다리를 5V에 꽂는 제품이면 true
@@ -77,6 +78,24 @@ void beep(int times) {
     digitalWrite(PIN_BUZZER, BUZZER_OFF_LEVEL);
     delay(100);
   }
+}
+
+// TEST: 한 부품만 켜고, 지금 켜져 있어야 하는 것을 시리얼 모니터에 찍은 뒤 1초 기다린다
+void testOne(const char* name, int pin) {
+  setColor(pin == PIN_LED_R, pin == PIN_LED_G, pin == PIN_LED_B);
+  digitalWrite(PIN_BUZZER, pin == PIN_BUZZER ? BUZZER_ON_LEVEL : BUZZER_OFF_LEVEL);
+  Serial.print(name);
+  Serial.print(" D");
+  Serial.println(pin);
+  delay(1000);
+}
+
+void testParts() {
+  testOne("RED", PIN_LED_R);
+  testOne("GREEN", PIN_LED_G);
+  testOne("BLUE", PIN_LED_B);
+  testOne("BUZZER", PIN_BUZZER);
+  digitalWrite(PIN_BUZZER, BUZZER_OFF_LEVEL);
 }
 
 // 서버에서 한 줄이 다 들어왔으면 true (내용은 line에 들어 있다)
@@ -147,6 +166,9 @@ void loop() {
     case IDLE:
       if (doorJustClosed) {
         enter(SETTLING);
+      } else if (gotLine && strcasecmp(line, "TEST") == 0) {
+        testParts();
+        enter(IDLE);  // 다시 초록
       }
       break;
 
