@@ -1,33 +1,24 @@
-// FindBox 보관함 아두이노 (Arduino Uno + 스크루 실드)
-//
-// 문이 닫히면 2초 기다렸다가 노트북 서버에 DROP을 보내고, 서버 결과(OK / FAIL)에 따라
-// RGB LED와 부저로 알린다.
-//
-//   LED  초록: 대기   파랑: 촬영·인식 중   빨강: 새 물건 없음·인식 실패·서버 응답 없음 (3초 뒤 초록)
-//   부저 등록이 끝나면(OK) "삐삐"
-//
-// 시리얼 (9600bps, 한 줄씩)
-//   아두이노 → 서버: DROP (문 닫힘)
-//   서버 → 아두이노: OK (등록 완료), FAIL (새 물건 없음·인식 실패)
-//   시리얼 모니터 → 아두이노: TEST (대기 중일 때 LED 빨강·초록·파랑과 부저를 하나씩 1초씩 켠다)
-
 // 배선: 스크루 실드에서 같은 번호 단자에 연결한다
 const int PIN_IR = 2;            // IR 센서 OUT (VCC → 5V, GND → GND)
-const int PIN_BUZZER = 3;        // 능동 부저 I/O (VCC → 5V, GND → GND)
-const int PIN_LED_R = 9;         // RGB LED R
+const int PIN_BUZZER = 3;        // 능동 부저 SIG (VCC → 5V, GND → GND)
+const int PIN_LED_R = 9;         // RGB LED R  (문을 닫았을 때 파랑이 켜지면 맞게 꽂힌 것)
 const int PIN_LED_G = 10;        // RGB LED G
-const int PIN_LED_B = 11;        // RGB LED B (− 다리 → GND)
+const int PIN_LED_B = 11;        // RGB LED B  (− → GND)
 
-// 부품에 따라 다를 수 있는 값 (부저·LED는 SunFounder 능동 부저 모듈 TS0211, RGB LED 모듈 SZH-EK058에 맞춤)
+// 부품에 따라 다를 수 있는 값
 const int DOOR_CLOSED_LEVEL = LOW;    // 문이 닫혀 IR 센서 앞을 가릴 때의 OUT 값. 거꾸로 동작하면 HIGH로
-const int BUZZER_ON_LEVEL = LOW;      // 부저가 울리는 I/O 값. 켜자마자 계속 울리면 HIGH로
+const int BUZZER_ON_LEVEL = LOW;      // 부저가 울리는 SIG 값 (SunFounder 모듈은 LOW). 켜자마자 계속 울리면 HIGH로
 const bool LED_COMMON_ANODE = false;  // RGB LED의 공통 다리를 5V에 꽂는 제품이면 true
 
 // 시간 (밀리초)
-const unsigned long DEBOUNCE_MS = 100;            // 신호가 이만큼 그대로여야 진짜로 바뀐 것으로 본다
+const unsigned long DEBOUNCE_MS = 100;            // 문 신호가 이만큼 그대로여야 진짜로 바뀐 것으로 본다
 const unsigned long SETTLE_MS = 2000;             // 문이 닫힌 뒤 손이 빠지고 물건이 자리 잡을 때까지 기다림
 const unsigned long RESPONSE_TIMEOUT_MS = 60000;  // 서버 응답을 기다리는 최대 시간 (인식 재시도 포함)
 const unsigned long ERROR_SHOW_MS = 3000;         // 빨간 불을 켜 두는 시간
+const unsigned long CHECK_STEP_MS = 500;          // 켤 때와 TEST에서 색 하나를 켜 두는 시간
+const unsigned long BEEP_MS = 150;                // 짧은 소리 (삑)
+const unsigned long BEEP_GAP_MS = 120;            // 짧은 소리 사이 쉬는 시간
+const unsigned long LONG_BEEP_MS = 700;           // 긴 소리 (삐―)
 
 const int BUZZER_OFF_LEVEL = (BUZZER_ON_LEVEL == LOW) ? HIGH : LOW;
 
@@ -71,47 +62,44 @@ void setColor(bool red, bool green, bool blue) {
   setLed(PIN_LED_B, blue);
 }
 
-void beep(int times) {
-  for (int i = 0; i < times; i++) {
-    digitalWrite(PIN_BUZZER, BUZZER_ON_LEVEL);
-    delay(120);
-    digitalWrite(PIN_BUZZER, BUZZER_OFF_LEVEL);
-    delay(100);
-  }
-}
-
-// TEST: 한 부품만 켜고, 지금 켜져 있어야 하는 것을 시리얼 모니터에 찍은 뒤 1초 기다린다
-void testOne(const char* name, int pin) {
-  setColor(pin == PIN_LED_R, pin == PIN_LED_G, pin == PIN_LED_B);
-  digitalWrite(PIN_BUZZER, pin == PIN_BUZZER ? BUZZER_ON_LEVEL : BUZZER_OFF_LEVEL);
-  Serial.print(name);
-  Serial.print(" D");
-  Serial.println(pin);
-  delay(1000);
-}
-
-void testParts() {
-  testOne("RED", PIN_LED_R);
-  testOne("GREEN", PIN_LED_G);
-  testOne("BLUE", PIN_LED_B);
-  testOne("BUZZER", PIN_BUZZER);
+void buzz(unsigned long ms) {
+  digitalWrite(PIN_BUZZER, BUZZER_ON_LEVEL);
+  delay(ms);
   digitalWrite(PIN_BUZZER, BUZZER_OFF_LEVEL);
 }
 
-// 서버에서 한 줄이 다 들어왔으면 true (내용은 line에 들어 있다)
-bool readLine() {
-  while (Serial.available() > 0) {
-    char c = Serial.read();
-    if (c == '\n') {
-      line[lineLength] = '\0';
-      lineLength = 0;
-      return true;
-    }
-    if (c != '\r' && lineLength < sizeof(line) - 1) {
-      line[lineLength++] = c;
-    }
+// 삑(1), 삐삐(2)
+void beep(int times) {
+  for (int i = 0; i < times; i++) {
+    buzz(BEEP_MS);
+    delay(BEEP_GAP_MS);
   }
-  return false;
+}
+
+// 삐―
+void longBeep() {
+  buzz(LONG_BEEP_MS);
+}
+
+// LED 빨강 → 초록 → 파랑을 하나씩 켜고 '삑'. print가 true면 지금 켜진 것을 시리얼 모니터에 찍는다 (TEST)
+void checkParts(bool print) {
+  const int pins[] = {PIN_LED_R, PIN_LED_G, PIN_LED_B};
+  const char* names[] = {"RED", "GREEN", "BLUE"};
+  for (int i = 0; i < 3; i++) {
+    setColor(i == 0, i == 1, i == 2);
+    if (print) {
+      Serial.print(names[i]);
+      Serial.print(" D");
+      Serial.println(pins[i]);
+    }
+    delay(CHECK_STEP_MS);
+  }
+  setColor(false, false, false);
+  if (print) {
+    Serial.print("BUZZER D");
+    Serial.println(PIN_BUZZER);
+  }
+  beep(1);
 }
 
 void enter(State next) {
@@ -126,6 +114,11 @@ void enter(State next) {
   }
 }
 
+void showError() {
+  enter(SHOW_ERROR);
+  longBeep();
+}
+
 void backToIdle() {
   enter(IDLE);
   if (pendingDrop && door.stable) {  // 기다리는 동안 또 넣고 닫았으면 바로 이어서 처리
@@ -134,8 +127,52 @@ void backToIdle() {
   pendingDrop = false;
 }
 
+void onDoorClosed() {
+  if (state == IDLE) {
+    enter(SETTLING);
+    beep(1);
+  } else if (state == WAITING || state == SHOW_ERROR) {
+    pendingDrop = true;  // 지금 것이 끝나면 이어서 처리한다
+    beep(1);
+  }
+}
+
+void onDoorOpened() {
+  if (state == SETTLING) {
+    enter(IDLE);  // 2초 안에 다시 열면 취소하고, 다시 닫으면 처음부터
+  }
+}
+
+// 한 줄이 다 들어오면 처리한다
+void processLine() {
+  if (state == IDLE && strcasecmp(line, "TEST") == 0) {
+    checkParts(true);
+    enter(IDLE);
+  } else if (state == WAITING && strcasecmp(line, "OK") == 0) {
+    beep(2);
+    backToIdle();
+  } else if (state == WAITING && strcasecmp(line, "FAIL") == 0) {
+    showError();
+  }
+}
+
+void readSerial() {
+  while (Serial.available() > 0) {
+    char c = Serial.read();
+    if (c == '\n') {
+      line[lineLength] = '\0';
+      if (lineLength > 0) {
+        processLine();
+      }
+      lineLength = 0;
+    } else if (c != '\r' && lineLength < sizeof(line) - 1) {
+      line[lineLength++] = c;
+    }
+  }
+}
+
 void setup() {
-  digitalWrite(PIN_BUZZER, BUZZER_OFF_LEVEL);  // 출력으로 바꾸기 전에 꺼 둔다 (켤 때 '삑' 소리 방지)
+  digitalWrite(PIN_BUZZER, BUZZER_OFF_LEVEL);  // 출력으로 바꾸기 전에 꺼 둔다 (켤 때 잡음 방지)
   pinMode(PIN_BUZZER, OUTPUT);
   pinMode(PIN_IR, INPUT);
   pinMode(PIN_LED_R, OUTPUT);
@@ -143,14 +180,7 @@ void setup() {
   pinMode(PIN_LED_B, OUTPUT);
   Serial.begin(9600);
 
-  // 배선 확인: 빨강 → 초록 → 파랑 → '삑'
-  setColor(true, false, false);
-  delay(300);
-  setColor(false, true, false);
-  delay(300);
-  setColor(false, false, true);
-  delay(300);
-  beep(1);
+  checkParts(false);  // 배선 확인: 빨강 → 초록 → 파랑 → '삑'
 
   // 켤 때 이미 닫혀 있는 문은 '닫힘'으로 치지 않는다
   door.stable = door.last = (digitalRead(PIN_IR) == DOOR_CLOSED_LEVEL);
@@ -158,48 +188,23 @@ void setup() {
 }
 
 void loop() {
-  bool doorJustClosed = door.update(digitalRead(PIN_IR) == DOOR_CLOSED_LEVEL) && door.stable;
-  bool gotLine = readLine();
+  readSerial();
+
+  if (door.update(digitalRead(PIN_IR) == DOOR_CLOSED_LEVEL)) {
+    if (door.stable) {
+      onDoorClosed();
+    } else {
+      onDoorOpened();
+    }
+  }
+
   unsigned long elapsed = millis() - stateStart;
-
-  switch (state) {
-    case IDLE:
-      if (doorJustClosed) {
-        enter(SETTLING);
-      } else if (gotLine && strcasecmp(line, "TEST") == 0) {
-        testParts();
-        enter(IDLE);  // 다시 초록
-      }
-      break;
-
-    case SETTLING:  // 손이 빠지고 물건이 자리 잡을 때까지 기다린다
-      if (!door.stable) {
-        enter(IDLE);  // 문이 다시 열리면 취소하고, 닫히면 처음부터
-      } else if (elapsed >= SETTLE_MS) {
-        Serial.println("DROP");
-        enter(WAITING);
-      }
-      break;
-
-    case WAITING:  // 서버가 사진을 찍고 인식하는 중
-      if (doorJustClosed) {
-        pendingDrop = true;
-      }
-      if (gotLine && strcasecmp(line, "OK") == 0) {
-        beep(2);
-        backToIdle();
-      } else if ((gotLine && strcasecmp(line, "FAIL") == 0) || elapsed >= RESPONSE_TIMEOUT_MS) {
-        enter(SHOW_ERROR);
-      }
-      break;
-
-    case SHOW_ERROR:
-      if (doorJustClosed) {
-        pendingDrop = true;
-      }
-      if (elapsed >= ERROR_SHOW_MS) {
-        backToIdle();
-      }
-      break;
+  if (state == SETTLING && elapsed >= SETTLE_MS) {
+    Serial.println("DROP");
+    enter(WAITING);
+  } else if (state == WAITING && elapsed >= RESPONSE_TIMEOUT_MS) {
+    showError();
+  } else if (state == SHOW_ERROR && elapsed >= ERROR_SHOW_MS) {
+    backToIdle();
   }
 }
