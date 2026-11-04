@@ -18,6 +18,7 @@ const unsigned long ERROR_SHOW_MS = 3000;         // 빨간 불을 켜 두는 �
 const unsigned long CHECK_STEP_MS = 500;          // 켤 때와 TEST에서 색 하나를 켜 두는 시간
 const unsigned long BEEP_MS = 150;                // 짧은 소리 (삑)
 const unsigned long BEEP_GAP_MS = 120;            // 짧은 소리 사이 쉬는 시간
+const unsigned long CHIRP_MS = 50;                // 아주 짧은 소리 세 번 (삐리릭, 새 물건 없음·인식 실패)
 const unsigned long LONG_BEEP_MS = 700;           // 긴 소리 (삐―, 서버가 대답하지 않을 때)
 
 const int BUZZER_OFF_LEVEL = (BUZZER_ON_LEVEL == LOW) ? HIGH : LOW;
@@ -73,6 +74,14 @@ void beep(int times) {
   for (int i = 0; i < times; i++) {
     buzz(BEEP_MS);
     delay(BEEP_GAP_MS);
+  }
+}
+
+// 삐리릭
+void chirp() {
+  for (int i = 0; i < 3; i++) {
+    buzz(CHIRP_MS);
+    delay(CHIRP_MS);
   }
 }
 
@@ -147,7 +156,8 @@ void processLine() {
     beep(2);
     backToIdle();
   } else if (state == WAITING && strcasecmp(line, "FAIL") == 0) {
-    enter(SHOW_ERROR);  // 새 물건 없음·인식 실패는 빨강만 (물건을 꺼내고 닫아도 이렇게 된다)
+    enter(SHOW_ERROR);  // 새 물건 없음·인식 실패 (물건을 꺼내고 닫아도 이렇게 된다)
+    chirp();
   }
 }
 
