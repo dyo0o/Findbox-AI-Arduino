@@ -18,7 +18,8 @@ const unsigned long ERROR_SHOW_MS = 3000;         // 빨간 불을 켜 두는 �
 const unsigned long CHECK_STEP_MS = 500;          // 켤 때와 TEST에서 색 하나를 켜 두는 시간
 const unsigned long BEEP_MS = 150;                // 짧은 소리 (삑)
 const unsigned long BEEP_GAP_MS = 120;            // 짧은 소리 사이 쉬는 시간
-const unsigned long LONG_BEEP_MS = 700;           // 긴 소리 (삐―)
+const unsigned long CHIRP_MS = 50;                // 아주 짧은 소리 세 번 (삐리릭, 새 물건 없음·인식 실패)
+const unsigned long LONG_BEEP_MS = 700;           // 긴 소리 (삐―, 서버가 대답하지 않을 때)
 
 const int BUZZER_OFF_LEVEL = (BUZZER_ON_LEVEL == LOW) ? HIGH : LOW;
 
@@ -76,6 +77,14 @@ void beep(int times) {
   }
 }
 
+// 삐리릭
+void chirp() {
+  for (int i = 0; i < 3; i++) {
+    buzz(CHIRP_MS);
+    delay(CHIRP_MS);
+  }
+}
+
 // 삐―
 void longBeep() {
   buzz(LONG_BEEP_MS);
@@ -114,11 +123,6 @@ void enter(State next) {
   }
 }
 
-void showError() {
-  enter(SHOW_ERROR);
-  longBeep();
-}
-
 void backToIdle() {
   enter(IDLE);
   if (pendingDrop && door.stable) {  // 기다리는 동안 또 넣고 닫았으면 바로 이어서 처리
@@ -152,7 +156,8 @@ void processLine() {
     beep(2);
     backToIdle();
   } else if (state == WAITING && strcasecmp(line, "FAIL") == 0) {
-    showError();
+    enter(SHOW_ERROR);  // 새 물건 없음·인식 실패 (물건을 꺼내고 닫아도 이렇게 된다)
+    chirp();
   }
 }
 
@@ -203,7 +208,8 @@ void loop() {
     Serial.println("DROP");
     enter(WAITING);
   } else if (state == WAITING && elapsed >= RESPONSE_TIMEOUT_MS) {
-    showError();
+    enter(SHOW_ERROR);
+    longBeep();  // 서버가 대답하지 않을 때만 소리로도 알린다
   } else if (state == SHOW_ERROR && elapsed >= ERROR_SHOW_MS) {
     backToIdle();
   }
