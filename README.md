@@ -2,12 +2,12 @@
 
 습득물 인식(Gemini), 분실물–습득물 매칭, 보관함 아두이노 코드 사용법 (2026-11-04 기준)
 
-| 파일·폴더                     | 내용                                                       |
-| ----------------------------- | ---------------------------------------------------------- |
-| `findbox_ai.py`               | 습득물 인식 모듈 + 카메라 테스트 도구                      |
-| `findbox_match.py`            | 분실물–습득물 매칭 모듈                                    |
-| `findbox_box/findbox_box.ino` | 보관함 아두이노 (문 감지, LED, 부저, 서버와 시리얼 통신)   |
-| `results/`                    | 테스트 결과 사진과 `인식결과.csv` (실행하면 자동으로 생김) |
+| 파일·폴더                             | 내용                                                       |
+| ------------------------------------- | ---------------------------------------------------------- |
+| `findbox_ai.py`                       | 습득물 인식 모듈 + 카메라 테스트 도구                      |
+| `findbox_match.py`                    | 분실물–습득물 매칭 모듈                                    |
+| `findbox_arduino/findbox_arduino.ino` | 보관함 아두이노 (문 감지, LED, 부저, 서버와 시리얼 통신)   |
+| `results/`                            | 테스트 결과 사진과 `인식결과.csv` (실행하면 자동으로 생김) |
 
 ---
 
@@ -127,7 +127,7 @@ python findbox_match.py   # 예시 데이터로 매칭 결과 보기
 
 ---
 
-## 4. 보관함 아두이노 (`findbox_box/findbox_box.ino`)
+## 4. 보관함 아두이노 (`findbox_arduino/findbox_arduino.ino`)
 
 문이 닫히면 2초 뒤 서버에 `DROP`을 보내고, 서버 결과(`OK` / `FAIL`)에 따라 LED와 부저로 알린다.
 
@@ -159,7 +159,7 @@ python findbox_match.py   # 예시 데이터로 매칭 결과 보기
 
 ### 올리기
 
-1. Arduino IDE에서 `findbox_box/findbox_box.ino`를 연다.
+1. Arduino IDE에서 `findbox_arduino/findbox_arduino.ino`를 연다.
 2. 보드는 Arduino Uno, 포트를 고르고 업로드한다.
 
 ### 서버 없이 확인하기
