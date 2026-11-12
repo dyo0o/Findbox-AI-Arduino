@@ -137,7 +137,7 @@ python findbox_match.py   # 예시 데이터로 매칭 결과 보기
 | --------- | --------- | -------------- |
 | IR 센서   | OUT       | D2             |
 |           | VCC / GND | 5V / GND       |
-| 능동 부저 | I/O       | D3             |
+| 능동 부저 | SIG       | D3             |
 |           | VCC / GND | 5V / GND       |
 | RGB LED   | R / G / B | D9 / D10 / D11 |
 |           | −         | GND            |
@@ -181,7 +181,7 @@ python findbox_match.py   # 예시 데이터로 매칭 결과 보기
 | `RED`에 청록, `GREEN`에 보라, `BLUE`에 노랑 | 공통 양극 LED다. `LED_COMMON_ANODE`를 `true`로                                  |
 | 다른 색 하나가 켜진다 (예: `RED`에 파랑)    | 켜지는 색에 맞게 R·G·B 선을 바꿔 꽂는다                                         |
 | 한 색만 안 켜진다                           | 그 색의 선과 단자 나사를 확인한다                                               |
-| 부저가 안 울린다                            | 부저 모듈의 전원 불이 꺼져 있으면 VCC·GND, 켜져 있으면 I/O → D3 배선을 확인한다 |
+| 부저가 안 울린다                            | 부저 모듈의 전원 불이 꺼져 있으면 VCC·GND, 켜져 있으면 SIG → D3 배선을 확인한다 |
 | `BUZZER`일 때만 조용하고 나머지 때는 울린다 | `BUZZER_ON_LEVEL`을 `HIGH`로                                                    |
 
 ### 부품에 따라 바꿀 값 (파일 맨 위)
