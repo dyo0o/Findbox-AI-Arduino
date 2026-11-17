@@ -1,0 +1,6 @@
+# findbox_ai.py에 필요한 라이브러리 (findbox_match.py는 파이썬만 있으면 된다)
+#
+# google-genai는 2.x로 고정한다. 3.0부터 통신 라이브러리가 httpx에서 httpx2로 바뀌어서,
+# 3.x를 깔면 findbox_ai.py가 `import httpx`에서 멈추고 타임아웃·연결 오류 처리도 맞지 않는다.
+google-genai>=2.30,<3
+opencv-python>=5,<6
