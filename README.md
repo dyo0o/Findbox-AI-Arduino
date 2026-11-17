@@ -7,6 +7,7 @@
 | `findbox_ai.py`                       | 습득물 인식 모듈 + 카메라 테스트 도구                      |
 | `findbox_match.py`                    | 분실물–습득물 매칭 모듈                                    |
 | `findbox_arduino/findbox_arduino.ino` | 보관함 아두이노 (문 감지, LED, 부저, 서버와 시리얼 통신)   |
+| `requirements.txt`                    | `findbox_ai.py`에 필요한 라이브러리와 버전                 |
 | `results/`                            | 테스트 결과 사진과 `인식결과.csv` (실행하면 자동으로 생김) |
 
 ---
@@ -16,8 +17,10 @@
 Python 3.10 이상이 필요하다. (`python --version`으로 확인)
 
 ```bash
-pip install google-genai opencv-python
+pip install -r requirements.txt
 ```
+
+- `google-genai`는 2.x를 쓴다. 3.0 이상이 깔려 있으면 `findbox_ai.py`가 켜지지 않는데, 위 명령이 2.x로 맞춰 준다.
 
 API 키는 PowerShell에서 설정한다. (새로 연 창부터 적용)
 
@@ -218,6 +221,7 @@ python findbox_match.py   # 예시 데이터로 매칭 결과 보기
 | 메시지                                                        | 해결                                                                             |
 | ------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | GEMINI_API_KEY가 없어서… / GEMINI_API_KEY 환경변수가 없습니다 | 1번대로 키를 설정한다. (`$env:` 방식은 창을 닫으면 사라진다)                     |
+| No module named 'httpx'                                       | `pip install -r requirements.txt`를 다시 실행한다. (`google-genai` 3.x일 때)     |
 | argument --camera: expected one argument                      | `--camera` 뒤에 번호를 붙인다. 0번 웹캠이면 `python findbox_ai.py`만 입력한다.   |
 | 요청 오류 (400): API key not valid                            | AI Studio에서 키를 다시 복사한다.                                                |
 | 요청 오류 (404)                                               | `MODEL`을 AI Studio에 나오는 모델 이름으로 바꾼다.                               |
