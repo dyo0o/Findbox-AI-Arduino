@@ -234,9 +234,10 @@ cd Findbox-AI-Arduino
 # 매칭: 설치할 것 없이 바로 실행된다 (Python 3.10 이상)
 python findbox_match.py
 
-# 인식: 웹캠과 Gemini API 키가 필요하다
+# 인식: Gemini API 키가 필요하다
 pip install -r requirements.txt
-python findbox_ai.py
+python findbox_photos.py photo.jpg   # 사진 파일로 (웹캠 없이)
+python findbox_ai.py                 # 웹캠으로
 ```
 
 - `google-genai`는 2.x로 고정했다. 3.0부터 통신 라이브러리가 바뀌어 이 코드의 오류 처리와 맞지 않는다.
